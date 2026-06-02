@@ -1,13 +1,13 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useAppState } from './hooks/useAppState';
 import { PomodoroModal } from './components/PomodoroModal';
-import { 
-  AIProvider, 
-  getActiveProvider, 
-  setActiveProvider, 
-  getProviderKey, 
-  saveProviderKey, 
-  clearAllKeys 
+import {
+  AIProvider,
+  getActiveProvider,
+  setActiveProvider,
+  getProviderKey,
+  saveProviderKey,
+  clearAllKeys
 } from './components/AIService';
 import { LoginScreen } from './views/LoginScreen';
 import { BackToTop } from './components/BackToTop';
@@ -55,7 +55,7 @@ export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('roadmap');
   const [focusDay, setFocusDay] = useState<string>('0_0');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  
+
   // Modals visibility
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPomoOpen, setIsPomoOpen] = useState(false);
@@ -266,7 +266,7 @@ export const App: React.FC = () => {
         <div className="nav-brand" onClick={() => handleNavItemClick('roadmap')} style={{ cursor: 'pointer' }}>
           <span className="g">DEV</span>
           <span className="p">OPS</span>
-          <span className="v">v4</span>
+          <span className="v">BY GK</span>
         </div>
         <div className="nav-tabs">
           <button
@@ -304,11 +304,11 @@ export const App: React.FC = () => {
         <div className="nav-right">
           <button className="nav-btn" onClick={() => handleNavItemClick('notes')}>📝 Notes</button>
           <button className="nav-btn hi" onClick={() => setIsPomoOpen(true)}>⏱</button>
-          
+
           {/* Notifications Dropdown */}
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            <button 
-              className="nav-btn" 
+            <button
+              className="nav-btn"
               onClick={() => {
                 setIsNotifOpen(!isNotifOpen);
                 markNotificationsRead();
@@ -322,7 +322,7 @@ export const App: React.FC = () => {
                 </span>
               )}
             </button>
-            
+
             {isNotifOpen && (
               <div style={{
                 position: 'absolute',
@@ -339,7 +339,7 @@ export const App: React.FC = () => {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '8px' }}>
                   <span style={{ fontWeight: 'bold', fontSize: '12px', color: 'var(--text)' }}>🔔 Notifications</span>
-                  <button 
+                  <button
                     onClick={clearNotifications}
                     style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '10px', cursor: 'pointer', fontFamily: 'monospace' }}
                   >
@@ -366,11 +366,11 @@ export const App: React.FC = () => {
 
           <button className="nav-btn" onClick={toggleTheme}>◑ Theme</button>
           <button className="nav-btn" onClick={handleOpenSettings}>🔑 Keys</button>
-          <button 
-            className="nav-btn" 
-            onClick={handleLogout} 
-            style={{ 
-              borderColor: 'rgba(255,95,95,.4)', 
+          <button
+            className="nav-btn"
+            onClick={handleLogout}
+            style={{
+              borderColor: 'rgba(255,95,95,.4)',
               color: 'var(--red)',
               background: 'rgba(255,95,95,.05)'
             }}
@@ -382,18 +382,18 @@ export const App: React.FC = () => {
 
       {/* Side Hamburger Drawer Backdrop */}
       {isDrawerOpen && (
-        <div 
-          id="ham-overlay" 
+        <div
+          id="ham-overlay"
           className="open"
           onClick={() => setIsDrawerOpen(false)}
         ></div>
       )}
 
       {/* Side Hamburger Drawer */}
-      <div 
-        id="ham-drawer" 
+      <div
+        id="ham-drawer"
         className={isDrawerOpen ? 'open' : ''}
-        role="dialog" 
+        role="dialog"
         aria-label="Navigation menu"
       >
         <div className="ham-section">
@@ -497,32 +497,32 @@ export const App: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar */}
       <div id="bottom-bar">
-        <button 
-          className={`btab ${currentView === 'roadmap' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'roadmap' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('roadmap')}
         >
           <span className="bico">☑</span>Map
         </button>
-        <button 
-          className={`btab ${currentView === 'kanban' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'kanban' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('kanban')}
         >
           <span className="bico">⊞</span>Kanban
         </button>
-        <button 
-          className={`btab ${currentView === 'focus' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'focus' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('focus')}
         >
           <span className="bico">◎</span>Focus
         </button>
-        <button 
-          className={`btab ${currentView === 'labs' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'labs' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('labs')}
         >
           <span className="bico">⌨</span>Labs
         </button>
-        <button 
-          className="btab" 
+        <button
+          className="btab"
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
         >
           <span className="bico">☰</span>More
@@ -578,7 +578,7 @@ export const App: React.FC = () => {
             <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '14px' }}>
               🔑 API Settings
             </div>
-            
+
             {/* Active Provider Selector */}
             <div style={{ marginBottom: '16px' }}>
               <label className="v4-label">Active AI Provider</label>
@@ -610,9 +610,9 @@ export const App: React.FC = () => {
                 onChange={e => setProviderKeys({ ...providerKeys, [activeProvider]: e.target.value })}
                 placeholder={
                   activeProvider === 'claude' ? 'sk-ant-...' :
-                  activeProvider === 'chatgpt' ? 'sk-...' :
-                  activeProvider === 'gemini' ? 'AIzaSy...' :
-                  'xai-...'
+                    activeProvider === 'chatgpt' ? 'sk-...' :
+                      activeProvider === 'gemini' ? 'AIzaSy...' :
+                        'xai-...'
                 }
                 style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--body)', fontSize: '13px', padding: '8px 11px', borderRadius: 'var(--r8)', outline: 'none' }}
               />
@@ -652,7 +652,7 @@ export const App: React.FC = () => {
                 <div style={{ marginTop: '4px' }}>Safe, client-side only.</div>
               </div>
             </div>
-            
+
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button className="v4-btn-secondary" onClick={() => setIsSettingsOpen(false)}>
                 Cancel

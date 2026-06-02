@@ -98,12 +98,18 @@ export const NotesView: React.FC<NotesViewProps> = ({ appState }) => {
       return;
     }
 
+    if (!isDayCompleted) {
+      showToast('⚠️ Please mark the day as completed before syncing to GitHub.');
+      return;
+    }
+
     setSyncLoading(true);
     setSyncStatus('idle');
 
     try {
       const filePath = `notes/day${day.day}.md`;
-      const content = day.github.template;
+      const today = new Date().toISOString().split('T')[0];
+      const content = day.github.template.replace(/YYYY-MM-DD/g, today);
       const base64Content = btoa(unescape(encodeURIComponent(content)));
 
       // Check if file already exists (to get SHA for update)
@@ -154,7 +160,7 @@ export const NotesView: React.FC<NotesViewProps> = ({ appState }) => {
       setSyncLoading(false);
       setTimeout(() => setSyncStatus('idle'), 4000);
     }
-  }, [day]);
+  }, [day, isDayCompleted]);
 
   const toggleDayComplete = () => {
     const next = { ...notesState, [dayKeyStr]: !isDayCompleted };
