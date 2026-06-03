@@ -42,3 +42,4 @@ We have restructured the bootcamp notes storage layout into structured weekly di
 - **Main App & Imports**:
   - Refactored `App.tsx` to integrate notes routing.
   - Updated `src/data/notes/index.ts` to correctly resolve imports from the new `week-1/` paths and export the Week 1 Project review notes.
+  - Replaced the "Labs" tab with the "Sandbox" tab in the mobile bottom navigation bar in `App.tsx`, leaving "Labs" in the side hamburger menu.
