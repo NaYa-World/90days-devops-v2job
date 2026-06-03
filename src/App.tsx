@@ -1,16 +1,24 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useAppState } from './hooks/useAppState';
 import { PomodoroModal } from './components/PomodoroModal';
-import { 
-  AIProvider, 
-  getActiveProvider, 
-  setActiveProvider, 
-  getProviderKey, 
-  saveProviderKey, 
-  clearAllKeys 
+import {
+  AIProvider,
+  getActiveProvider,
+  setActiveProvider,
+  getProviderKey,
+  saveProviderKey,
+  clearAllKeys
 } from './components/AIService';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
 import { LoginScreen } from './views/LoginScreen';
 import { BackToTop } from './components/BackToTop';
+import { LaunchScreen } from './components/LaunchScreen';
 
 // Lazy load views for optimal code splitting & bundle size reduction
 const RoadmapView = React.lazy(() => import('./views/RoadmapView').then(m => ({ default: m.RoadmapView })));
@@ -55,11 +63,14 @@ export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('roadmap');
   const [focusDay, setFocusDay] = useState<string>('0_0');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  
+  const [showAnim, setShowAnim] = useState<boolean>(true);
+
   // Modals visibility
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPomoOpen, setIsPomoOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [activeProvider, setActiveProviderState] = useState<AIProvider>('claude');
   const [providerKeys, setProviderKeys] = useState<Record<AIProvider, string>>({
     claude: '',
@@ -67,8 +78,94 @@ export const App: React.FC = () => {
     gemini: '',
     grok: ''
   });
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [githubSettings, setGithubSettings] = useState({ pat: '', username: '', repo: '', branch: 'main' });
+
+  // Check initial notification status
+  useEffect(() => {
+    LocalNotifications.getPending().then(res => {
+      if (res.notifications.some(n => n.id >= 9001 && n.id <= 9012)) {
+        setNotificationsEnabled(true);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Theme the native status bar on launch
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: '#07090f' }).catch(() => {});
+    }
+  }, []);
+
+  // Native hardware back button & keyboard handling
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      Keyboard.setResizeMode({ mode: KeyboardResize.Body }).catch(() => {});
+      
+      const backListener = CapacitorApp.addListener('backButton', () => {
+        setCurrentView(prevView => {
+          if (prevView !== 'roadmap') return 'roadmap';
+          CapacitorApp.exitApp();
+          return prevView;
+        });
+      });
+
+      return () => {
+        backListener.then(l => l.remove());
+      };
+    }
+  }, []);
+
+  const toggleStudyReminders = async () => {
+    try {
+      if (!notificationsEnabled) {
+        let permStatus = await LocalNotifications.checkPermissions();
+        if (permStatus.display !== 'granted') {
+          permStatus = await LocalNotifications.requestPermissions();
+        }
+        if (permStatus.display === 'granted') {
+          // Create high-importance sound-enabled channel
+          if (Capacitor.isNativePlatform()) {
+            await LocalNotifications.createChannel({
+              id: 'study-reminders',
+              name: 'Study Reminders',
+              description: 'DevOps Study reminders scheduled every 2 hours',
+              importance: 5, // IMPORTANCE_HIGH (sound + heads-up alert)
+              visibility: 1,
+              vibration: true,
+              sound: 'default'
+            });
+          }
+
+          const notifications = [];
+          const now = Date.now();
+          // Schedule 12 daily notifications spaced 2 hours apart
+          for (let i = 1; i <= 12; i++) {
+            notifications.push({
+              id: 9000 + i,
+              title: "Time to study! 🚀",
+              body: "It's been 2 hours. Keep pushing on your 90 Days of DevOps journey!",
+              schedule: { at: new Date(now + i * 2 * 60 * 60 * 1000), every: 'day' },
+              channelId: 'study-reminders',
+              sound: 'default'
+            });
+          }
+          await LocalNotifications.schedule({ notifications });
+          setNotificationsEnabled(true);
+          alert('Study reminders enabled! You will be notified every 2 hours.');
+        } else {
+          alert('Notification permission denied.');
+        }
+      } else {
+        const ids = Array.from({ length: 12 }, (_, i) => ({ id: 9000 + i + 1 }));
+        await LocalNotifications.cancel({ notifications: ids });
+        setNotificationsEnabled(false);
+        alert('Study reminders disabled.');
+      }
+    } catch (err) {
+      console.error('Local notifications error:', err);
+    }
+  };
 
   // Handle Theme Initialisation
   useEffect(() => {
@@ -233,11 +330,46 @@ export const App: React.FC = () => {
   const primaryViews = ['roadmap', 'kanban', 'focus', 'labs'];
 
   const handleNavItemClick = (view: string) => {
+    if (Capacitor.isNativePlatform()) {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+    }
     setCurrentView(view);
     setIsDrawerOpen(false);
   };
 
+  const handleShareProgress = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+        await Share.share({
+          title: 'My 90 Days DevOps Journey 🚀',
+          text: `I'm learning DevOps! Current study stats: ${studyHours} hours of focus sessions. Join me in the 90 Days DevOps Challenge!`,
+          url: 'https://github.com/NaYaGK/sitecore-ww',
+          dialogTitle: 'Share your DevOps Progress',
+        });
+      } else {
+        if (navigator.share) {
+          await navigator.share({
+            title: 'My 90 Days DevOps Journey 🚀',
+            text: `I'm learning DevOps! Current study stats: ${studyHours} hours of focus sessions. Join me in the 90 Days DevOps Challenge!`,
+            url: 'https://github.com/NaYaGK/sitecore-ww',
+          });
+        } else {
+          await navigator.clipboard.writeText(`I'm learning DevOps! Current study stats: ${studyHours} hours of focus sessions. Join me in the 90 Days DevOps Challenge!`);
+          alert('🚀 Progress copied to clipboard!');
+        }
+      }
+    } catch (err) {
+      console.error('Share error:', err);
+    }
+  };
+
+
   // Guard routing for Local Authentication system (unconditional hooks first)
+  if (showAnim) {
+    return <LaunchScreen onComplete={() => setShowAnim(false)} />;
+  }
+
   if (!currentUser) {
     return (
       <LoginScreen
@@ -266,7 +398,7 @@ export const App: React.FC = () => {
         <div className="nav-brand" onClick={() => handleNavItemClick('roadmap')} style={{ cursor: 'pointer' }}>
           <span className="g">DEV</span>
           <span className="p">OPS</span>
-          <span className="v">v4</span>
+          <span className="v">BY GK</span>
         </div>
         <div className="nav-tabs">
           <button
@@ -295,20 +427,21 @@ export const App: React.FC = () => {
             ◎ Focus
           </button>
           <button
-            className={`nav-tab ${currentView === 'labs' ? 'active' : ''}`}
-            onClick={() => handleNavItemClick('labs')}
+            className={`nav-tab ${currentView === 'sandbox' ? 'active' : ''}`}
+            onClick={() => handleNavItemClick('sandbox')}
           >
-            ⌨ Labs
+            🧑‍💻 Sandbox
           </button>
         </div>
         <div className="nav-right">
           <button className="nav-btn" onClick={() => handleNavItemClick('notes')}>📝 Notes</button>
           <button className="nav-btn hi" onClick={() => setIsPomoOpen(true)}>⏱</button>
-          
+          <button className="nav-btn" onClick={handleShareProgress} title="Share Progress">📤 Share</button>
+
           {/* Notifications Dropdown */}
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            <button 
-              className="nav-btn" 
+            <button
+              className="nav-btn"
               onClick={() => {
                 setIsNotifOpen(!isNotifOpen);
                 markNotificationsRead();
@@ -322,7 +455,7 @@ export const App: React.FC = () => {
                 </span>
               )}
             </button>
-            
+
             {isNotifOpen && (
               <div style={{
                 position: 'absolute',
@@ -339,7 +472,7 @@ export const App: React.FC = () => {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '8px' }}>
                   <span style={{ fontWeight: 'bold', fontSize: '12px', color: 'var(--text)' }}>🔔 Notifications</span>
-                  <button 
+                  <button
                     onClick={clearNotifications}
                     style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '10px', cursor: 'pointer', fontFamily: 'monospace' }}
                   >
@@ -366,11 +499,11 @@ export const App: React.FC = () => {
 
           <button className="nav-btn" onClick={toggleTheme}>◑ Theme</button>
           <button className="nav-btn" onClick={handleOpenSettings}>🔑 Keys</button>
-          <button 
-            className="nav-btn" 
-            onClick={handleLogout} 
-            style={{ 
-              borderColor: 'rgba(255,95,95,.4)', 
+          <button
+            className="nav-btn"
+            onClick={handleLogout}
+            style={{
+              borderColor: 'rgba(255,95,95,.4)',
               color: 'var(--red)',
               background: 'rgba(255,95,95,.05)'
             }}
@@ -382,18 +515,18 @@ export const App: React.FC = () => {
 
       {/* Side Hamburger Drawer Backdrop */}
       {isDrawerOpen && (
-        <div 
-          id="ham-overlay" 
+        <div
+          id="ham-overlay"
           className="open"
           onClick={() => setIsDrawerOpen(false)}
         ></div>
       )}
 
       {/* Side Hamburger Drawer */}
-      <div 
-        id="ham-drawer" 
+      <div
+        id="ham-drawer"
         className={isDrawerOpen ? 'open' : ''}
-        role="dialog" 
+        role="dialog"
         aria-label="Navigation menu"
       >
         <div className="ham-section">
@@ -405,8 +538,8 @@ export const App: React.FC = () => {
             <span className="ham-ico">📝</span>Notes
             <span className="ham-badge hot">new</span>
           </button>
-          <button className={`ham-item ${currentView === 'sandbox' ? 'active' : ''}`} onClick={() => handleNavItemClick('sandbox')}>
-            <span className="ham-ico">🧑‍💻</span>Sandbox
+          <button className={`ham-item ${currentView === 'labs' ? 'active' : ''}`} onClick={() => handleNavItemClick('labs')}>
+            <span className="ham-ico">⌨</span>Labs
             <span className="ham-badge hot">new</span>
           </button>
         </div>
@@ -497,32 +630,32 @@ export const App: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar */}
       <div id="bottom-bar">
-        <button 
-          className={`btab ${currentView === 'roadmap' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'roadmap' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('roadmap')}
         >
           <span className="bico">☑</span>Map
         </button>
-        <button 
-          className={`btab ${currentView === 'kanban' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'kanban' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('kanban')}
         >
           <span className="bico">⊞</span>Kanban
         </button>
-        <button 
-          className={`btab ${currentView === 'focus' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'focus' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('focus')}
         >
           <span className="bico">◎</span>Focus
         </button>
-        <button 
-          className={`btab ${currentView === 'labs' ? 'active' : ''}`} 
+        <button
+          className={`btab ${currentView === 'labs' ? 'active' : ''}`}
           onClick={() => handleNavItemClick('labs')}
         >
           <span className="bico">⌨</span>Labs
         </button>
-        <button 
-          className="btab" 
+        <button
+          className="btab"
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
         >
           <span className="bico">☰</span>More
@@ -578,7 +711,7 @@ export const App: React.FC = () => {
             <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '14px' }}>
               🔑 API Settings
             </div>
-            
+
             {/* Active Provider Selector */}
             <div style={{ marginBottom: '16px' }}>
               <label className="v4-label">Active AI Provider</label>
@@ -610,9 +743,9 @@ export const App: React.FC = () => {
                 onChange={e => setProviderKeys({ ...providerKeys, [activeProvider]: e.target.value })}
                 placeholder={
                   activeProvider === 'claude' ? 'sk-ant-...' :
-                  activeProvider === 'chatgpt' ? 'sk-...' :
-                  activeProvider === 'gemini' ? 'AIzaSy...' :
-                  'xai-...'
+                    activeProvider === 'chatgpt' ? 'sk-...' :
+                      activeProvider === 'gemini' ? 'AIzaSy...' :
+                        'xai-...'
                 }
                 style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--body)', fontSize: '13px', padding: '8px 11px', borderRadius: 'var(--r8)', outline: 'none' }}
               />
@@ -652,7 +785,32 @@ export const App: React.FC = () => {
                 <div style={{ marginTop: '4px' }}>Safe, client-side only.</div>
               </div>
             </div>
-            
+
+            {/* Android Notifications Toggle */}
+            <div style={{ marginBottom: '24px' }}>
+              <label className="v4-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Study Reminders (Every 2h)</span>
+                <button
+                  onClick={toggleStudyReminders}
+                  style={{
+                    background: notificationsEnabled ? 'var(--blue)' : 'var(--border)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {notificationsEnabled ? 'ON' : 'OFF'}
+                </button>
+              </label>
+              <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>
+                Receive background notifications on your Android device every 2 hours.
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button className="v4-btn-secondary" onClick={() => setIsSettingsOpen(false)}>
                 Cancel

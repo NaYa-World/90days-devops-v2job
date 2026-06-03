@@ -13,6 +13,38 @@ Instead of just learning theory, this app focuses on:
 - **Proof of Work**: You build a real portfolio of projects and daily logs that prove your competence to recruiters.
 - **Interview Readiness**: You continuously test your knowledge against actual interview questions and ATS (Applicant Tracking System) resume scanners.
 
+### The "Zero to Hired" Workflow
+
+```mermaid
+graph TD
+    A[Start: Choose a Roadmap] --> B(Learn & Fix Scenarios)
+    B --> C{Track Daily Progress}
+    
+    C -->|Log Builds| D[Generate Portfolio & LinkedIn Posts]
+    C -->|Take Notes| E[Spaced Repetition Reviews]
+    C -->|Practice| F[Sandbox & Labs]
+    
+    D --> G[Resume ATS Optimization]
+    E --> H[Mock Interviews & Q-Bank]
+    F --> H
+    
+    G --> I{Readiness Gates}
+    H --> I
+    
+    I -->|< 65% Ready| B
+    I -->|>= 65% Ready| J[Apply for Jobs]
+    
+    J --> K[Track in Jobs Kanban]
+    K --> L(((Hired!)))
+    
+    classDef default fill:#1c2436,stroke:#4fa8ff,stroke-width:1px,color:#e6edf3;
+    classDef highlight fill:#0a1a12,stroke:#00d9a0,stroke-width:2px,color:#e6edf3;
+    classDef startend fill:#2d1b36,stroke:#c084fc,stroke-width:2px,color:#e6edf3;
+    
+    class A,L startend;
+    class I,J,K highlight;
+```
+
 ---
 
 ## 🧭 Roadmaps
